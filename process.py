@@ -1,5 +1,5 @@
 import email
-from lxml import etree, html
+from lxml import html
 from io import StringIO
 import csv
 import dateparser
