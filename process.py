@@ -1,9 +1,9 @@
 import email
-from lxml import html
+from lxml import html 		# pip install lxml
 from io import StringIO
 import csv
-import dateparser
-import ldap
+import dateparser			# pip install dateparser
+import ldap 				# pip install python_ldap
 
 ## Extract html text from raw multipart email into 'body'
 with open("cpraw") as file:
@@ -34,7 +34,7 @@ def format_time(time):
 		return ""
 	time0 = str(round(float(time.split()[0])))
 	newtime = time0 + " " + time.split()[1].replace("hrs", "hours").replace("yrs", "years") + " ago"
-	newtime = dateparser.parse(newtime).strftime("%x")
+	newtime = dateparser.parse(newtime).strftime("%F")
 	newtime = newtime + " / " + time
 	return newtime
 
