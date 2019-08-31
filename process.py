@@ -4,9 +4,10 @@ from io import StringIO
 import csv
 import ldap 				# pip install python_ldap
 from dateutil.relativedelta import relativedelta
-# from dateutil.parser import parse
+from dateutil.parser import parse
 from datetime import *;
-import math 
+import math
+from collections import ChainMap
 
 def td(element, index):
 	return element.xpath('td[' + str(index) + ']')[0].text_content().strip()
@@ -36,6 +37,18 @@ def format_time(time):  # turns e.g. "10.2 months" into "2018-10-20 / 10.2 month
 	newtime = datetime.fromtimestamp(timestamp).strftime("%F")
 	return newtime + " / " + time
 
+def ldap_search(uids, attrs):
+	ldap_limit = 100
+	ldap_db = ldap.initialize("ldaps://ldap.mit.edu:636")
+	chunked_uids = [uids[i:i + ldap_limit] for i in range(0, len(uids), ldap_limit)]
+	result = []
+	for uid_chunk in chunked_uids:
+		filter = "(|(uid=" + ")(uid=".join(uid_chunk) + "))"
+		result += ldap_db.search_s("dc=mit,dc=edu", ldap.SCOPE_SUBTREE, filter, set(attrs + ['uid']))
+	result = [item[1] for item in result]
+	result = [{key:" / ".join([item.decode() for item in value]) for (key,value) in userdict.items() } for userdict in result ]
+	result = [ {item['uid']:item} for item in result ]
+	return dict(ChainMap(*result))
 
 
 ## Extract html text from raw multipart email into 'body'
@@ -61,26 +74,31 @@ for element in path:
 	kerb = td(element, 1) if td(element, 1) else kerb
 	kerbs += [kerb]
 
-userinfo = {}
+userinfo = ldap_search(kerbs, ['cn', 'roomNumber'])
 for kerb in set(kerbs):
-	userinfo[kerb] = {'count': kerbs.count(kerb)}
+	userinfo[kerb]['count'] = kerbs.count(kerb)
 
 kerbs = list(set(kerbs))	# remove duplicate kerbs
 
 ## Get info from ldap server
 
-ldap_sizelimit = 100		# ldap server gives an error if we ask for more than this in one call
-ldap_db = ldap.initialize("ldaps://ldap.mit.edu:636")
-chunked_kerbs = [kerbs[i:i + ldap_sizelimit] for i in range(0, len(kerbs), ldap_sizelimit)]
-for kerbs in chunked_kerbs:
-	filter = "(|(uid=" + ")(uid=".join(kerbs) + "))"
-	result = ldap_db.search_s("dc=mit,dc=edu", ldap.SCOPE_SUBTREE, filter, ['cn', 'roomNumber', 'uid'])
-	result1 = [item[1] for item in result]
-	for user in result1:
-		for key in user:
-			user[key] = " / ".join([item.decode() for item in user[key]])
-		userinfo[user['uid']]['roomNumber'] = user.get('roomNumber')
-		userinfo[user['uid']]['cn'] = user.get('cn')
+# ldap function complete, finish using it later
+# print(ldap_search(['foge', 'bdr', 'jbrj', 'lsass', 'dpmoses'], ['cn', 'roomNumber']))
+# exit()
+
+# This should be more generalized
+# ldap_sizelimit = 100		# ldap server gives an error if we ask for more than this in one call
+# ldap_db = ldap.initialize("ldaps://ldap.mit.edu:636")
+# chunked_kerbs = [kerbs[i:i + ldap_sizelimit] for i in range(0, len(kerbs), ldap_sizelimit)]
+# for kerbs in chunked_kerbs:
+# 	filter = "(|(uid=" + ")(uid=".join(kerbs) + "))"
+# 	result = ldap_db.search_s("dc=mit,dc=edu", ldap.SCOPE_SUBTREE, filter, ['cn', 'roomNumber', 'uid'])
+# 	result1 = [item[1] for item in result]
+# 	for user in result1:
+# 		for key in user:
+# 			user[key] = " / ".join([item.decode() for item in user[key]])
+# 		userinfo[user['uid']]['roomNumber'] = user.get('roomNumber')
+# 		userinfo[user['uid']]['cn'] = user.get('cn')
 
 kerb = ""
 
@@ -107,7 +125,7 @@ with open('cpReport.csv', 'w', newline='') as csvfile:
 		activity = format_time(td(element, 7))
 
 		cn = userinfo[kerb]['cn']
-		room = userinfo[kerb]['roomNumber']
+		room = userinfo[kerb].get('roomNumber')
 		count = userinfo[kerb]['count']
 		count = " (" + str(count) + ")" if count > 1 else ""
 		writer.writerow({kerb_fn: kerb + count, cn_fn: cn, room_fn: room, archive_fn: archive, percent_fn: percent, completed_fn: completed, activity_fn: activity})
