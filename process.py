@@ -4,7 +4,7 @@ from io import StringIO
 import csv
 import ldap 				# pip install python_ldap
 from dateutil.relativedelta import relativedelta
-from dateutil.parser import parse
+# from dateutil.parser import parse
 from datetime import *;
 import math 
 
@@ -78,12 +78,9 @@ for kerbs in chunked_kerbs:
 	result1 = [item[1] for item in result]
 	for user in result1:
 		for key in user:
-			user[key] = user[key][0].decode()
-
+			user[key] = " / ".join([item.decode() for item in user[key]])
 		userinfo[user['uid']]['roomNumber'] = user.get('roomNumber')
 		userinfo[user['uid']]['cn'] = user.get('cn')
-
-
 
 kerb = ""
 
