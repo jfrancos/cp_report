@@ -50,7 +50,6 @@ def ldap_search(uids, attrs):
 	result = [ {item['uid']:item} for item in result ]
 	return dict(ChainMap(*result))
 
-
 ## Extract html text from raw multipart email into 'body'
 with open("cpraw") as file:
 	msg = email.message_from_file(file)
@@ -63,11 +62,11 @@ for part in msg.walk():
 ## Convert html text to an lxml tree
 tree = html.parse(StringIO(body), html.HTMLParser())
 
-
 ## Get the relevant parts of the tree
 path = tree.xpath('//table//table//table//table[position() mod 2 = 1]/tbody/tr')
 
-today = parse(msg.get('Date'))		# date math should be relative to mail header's date
+## Date math should be relative to mail header's date
+today = parse(msg.get('Date'))		
 
 kerbs = []
 for element in path:
@@ -77,30 +76,6 @@ for element in path:
 userinfo = ldap_search(kerbs, ['cn', 'roomNumber'])
 for kerb in set(kerbs):
 	userinfo[kerb]['count'] = kerbs.count(kerb)
-
-kerbs = list(set(kerbs))	# remove duplicate kerbs
-
-## Get info from ldap server
-
-# ldap function complete, finish using it later
-# print(ldap_search(['foge', 'bdr', 'jbrj', 'lsass', 'dpmoses'], ['cn', 'roomNumber']))
-# exit()
-
-# This should be more generalized
-# ldap_sizelimit = 100		# ldap server gives an error if we ask for more than this in one call
-# ldap_db = ldap.initialize("ldaps://ldap.mit.edu:636")
-# chunked_kerbs = [kerbs[i:i + ldap_sizelimit] for i in range(0, len(kerbs), ldap_sizelimit)]
-# for kerbs in chunked_kerbs:
-# 	filter = "(|(uid=" + ")(uid=".join(kerbs) + "))"
-# 	result = ldap_db.search_s("dc=mit,dc=edu", ldap.SCOPE_SUBTREE, filter, ['cn', 'roomNumber', 'uid'])
-# 	result1 = [item[1] for item in result]
-# 	for user in result1:
-# 		for key in user:
-# 			user[key] = " / ".join([item.decode() for item in user[key]])
-# 		userinfo[user['uid']]['roomNumber'] = user.get('roomNumber')
-# 		userinfo[user['uid']]['cn'] = user.get('cn')
-
-kerb = ""
 
 kerb_fn = "Username"
 archive_fn = "Source"
@@ -121,13 +96,9 @@ with open('cpReport.csv', 'w', newline='') as csvfile:
 		archive = td(element, 2).partition('\n')[0]
 		percent = td(element, 5)
 		completed = format_time(td(element, 6))
-
 		activity = format_time(td(element, 7))
-
 		cn = userinfo[kerb]['cn']
 		room = userinfo[kerb].get('roomNumber')
 		count = userinfo[kerb]['count']
 		count = " (" + str(count) + ")" if count > 1 else ""
 		writer.writerow({kerb_fn: kerb + count, cn_fn: cn, room_fn: room, archive_fn: archive, percent_fn: percent, completed_fn: completed, activity_fn: activity})
-
-
