@@ -97,8 +97,16 @@ with open('cpReport.csv', 'w', newline='') as csvfile:
 		percent = td(element, 5)
 		completed = format_time(td(element, 6))
 		activity = format_time(td(element, 7))
-		cn = userinfo[kerb]['cn']
+		cn = userinfo[kerb].get('cn')
 		room = userinfo[kerb].get('roomNumber')
-		count = userinfo[kerb]['count']
+		count = userinfo[kerb].get('count')
 		count = " (" + str(count) + ")" if count > 1 else ""
-		writer.writerow({kerb_fn: kerb + count, cn_fn: cn, room_fn: room, archive_fn: archive, percent_fn: percent, completed_fn: completed, activity_fn: activity})
+		writer.writerow({
+			kerb_fn: kerb + count,
+			cn_fn: cn,
+			room_fn: room,
+			archive_fn: archive,
+			percent_fn: percent,
+			completed_fn: completed,
+			activity_fn: activity
+		})
