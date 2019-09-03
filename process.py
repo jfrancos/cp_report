@@ -43,6 +43,7 @@ def ldap_search(uids, attrs):
 	chunked_uids = [uids[i:i + ldap_limit] for i in range(0, len(uids), ldap_limit)]
 	result = []
 	for uid_chunk in chunked_uids:
+		print(f"querying ldap server for {len(uid_chunk)} kerbs")
 		filter = "(|(uid=" + ")(uid=".join(uid_chunk) + "))"
 		result += ldap_db.search_s("dc=mit,dc=edu", ldap.SCOPE_SUBTREE, filter, set(attrs + ['uid']))
 	result = [item[1] for item in result]
@@ -51,6 +52,7 @@ def ldap_search(uids, attrs):
 	return dict(ChainMap(*result))
 
 ## Extract html text from raw multipart email into 'body'
+print("Extracting HTML text from raw source")
 with open("cpraw") as file:
 	msg = email.message_from_file(file)
 for part in msg.walk():       
@@ -60,20 +62,24 @@ for part in msg.walk():
 		break
 
 ## Convert html text to an lxml tree
+print("Contructing lxml tree")
 tree = html.parse(StringIO(body), html.HTMLParser())
 
 ## Get the relevant parts of the tree
+print("Finding relevent nodes")
 path = tree.xpath('//table//table//table//table[position() mod 2 = 1]/tbody/tr')
 
 ## Date math should be relative to mail header's date
-today = parse(msg.get('Date'))		
+today = parse(msg.get('Date'))
+print(f"Email header date is {today}")
 
 kerbs = []
 for element in path:
 	kerb = td(element, 1) if td(element, 1) else kerb
 	kerbs += [kerb]
 
-userinfo = ldap_search(kerbs, ['cn', 'roomNumber'])
+
+userinfo = ldap_search(list(set(kerbs)), ['cn', 'roomNumber'])
 for kerb in set(kerbs):
 	userinfo[kerb]['count'] = kerbs.count(kerb)
 
@@ -85,6 +91,7 @@ activity_fn = "Last Activity"
 cn_fn = "Name"
 room_fn = "Room"
 
+print(f"Writing {len(kerbs)} rows for {len(set(kerbs))} distinct users")
 with open('cpReport.csv', 'w', newline='') as csvfile:
 	fieldnames = [kerb_fn, cn_fn, room_fn, archive_fn, percent_fn, completed_fn, activity_fn]
 	writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -92,7 +99,7 @@ with open('cpReport.csv', 'w', newline='') as csvfile:
 
 	for element in path:
 		kerb = td(element, 1) if td(element, 1) else kerb
-		print(kerb)
+		# print(kerb)
 		archive = td(element, 2).partition('\n')[0]
 		percent = td(element, 5)
 		completed = format_time(td(element, 6))
